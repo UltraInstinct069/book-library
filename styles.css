@@ -217,6 +217,37 @@ header p {
     opacity: 0.9;
 }
 
+.delete-btn {
+    width: 100%;
+    padding: 10px;
+    margin-top: 8px;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    background: #e53935;
+    color: white;
+    transition: background 0.3s;
+}
+
+.delete-btn:hover {
+    background: #b71c1c;
+}
+
+.image-link {
+    display: inline-block;
+    margin-bottom: 12px;
+    color: #667eea;
+    font-size: 0.9em;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.image-link:hover {
+    text-decoration: underline;
+}
+
 @media (max-width: 768px) {
     header h1 {
         font-size: 2em;
