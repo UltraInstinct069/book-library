@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Library - Lending System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📚 Community Book Library</h1>
+            <p>Share and borrow books with your community</p>
+        </header>
+
+        <!-- Add Book Form -->
+        <section class="add-book-section">
+            <h2>Add a New Book</h2>
+            <form id="addBookForm">
+                <input type="text" id="bookTitle" placeholder="Book Title *" required>
+                <input type="text" id="bookAuthor" placeholder="Author *" required>
+                <input type="text" id="ownerName" placeholder="Your Name *" required>
+                <input type="file" id="bookImage" accept="image/*" required>
+                <button type="submit" id="submitBtn">Add Book</button>
+            </form>
+            <div id="uploadProgress" class="progress-bar" style="display: none;">
+                <div class="progress-fill"></div>
+            </div>
+        </section>
+
+        <!-- Books Display -->
+        <section class="books-section">
+            <h2>Available Books</h2>
+            <div id="loadingMessage">Loading books...</div>
+            <div id="booksGrid" class="books-grid"></div>
+        </section>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+    
+    <!-- Your App Script -->
+    <script src="app.js"></script>
+</body>
+</html>
