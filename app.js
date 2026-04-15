@@ -102,6 +102,34 @@ addBookForm.addEventListener('submit', async (e) => {
     }
 });
 
+// Delete Book
+async function deleteBook(timestamp) {
+    if (!confirm('Are you sure you want to delete this book?')) return;
+
+    try {
+        await fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                action: 'delete',
+                timestamp: timestamp
+            })
+        });
+
+        alert('Book deleted!');
+        setTimeout(() => {
+            loadBooks();
+        }, 1000);
+
+    } catch (error) {
+        console.error('Error deleting book:', error);
+        alert('Error deleting book!');
+    }
+}
+
 // Toggle Book Rental Status
 async function toggleRentalStatus(timestamp, currentStatus) {
     try {
@@ -149,12 +177,16 @@ function displayBooks(books) {
                 <div class="book-title">${escapeHtml(book.title)}</div>
                 <div class="book-author">by ${escapeHtml(book.author)}</div>
                 <div class="book-owner">Owner: ${escapeHtml(book.owner)}</div>
+                <a class="image-link" href="${book.image_url}" target="_blank" rel="noopener noreferrer">🔗 View Photo</a>
                 <span class="status-badge ${book.is_rented ? 'rented' : 'available'}">
                     ${book.is_rented ? '📖 Currently Rented' : '✅ Available'}
                 </span>
                 <button class="toggle-status-btn ${book.is_rented ? 'rented' : 'available'}" 
                         onclick="toggleRentalStatus('${book.timestamp}', ${book.is_rented})">
                     ${book.is_rented ? 'Mark as Available' : 'Mark as Rented'}
+                </button>
+                <button class="delete-btn" onclick="deleteBook('${book.timestamp}')">
+                    🗑️ Delete Book
                 </button>
             </div>
         </div>
