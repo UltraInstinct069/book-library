@@ -1,18 +1,6 @@
-// Firebase Configuration - REPLACE WITH YOUR CONFIG
-const firebaseConfig = {
-  apiKey: "AIzaSyABe3-mj9AyWRwAwkX9x7NXZFLU17KOE8g",
-  authDomain: "book-library-db-b4427.firebaseapp.com",
-  projectId: "book-library-db-b4427",
-  storageBucket: "book-library-db-b4427.firebasestorage.app",
-  messagingSenderId: "65859516491",
-  appId: "1:65859516491:web:d040213985074a01f4f5ce",
-  measurementId: "G-K8SLPNG0S5"
-};
-
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const storage = firebase.storage();
+// Configuration - REPLACE WITH YOUR VALUES
+const GOOGLE_SCRIPT_URL = 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE';
+const IMGBB_API_KEY = 'YOUR_IMGBB_API_KEY_HERE'; // Get free at https://api.imgbb.com
 
 // DOM Elements
 const addBookForm = document.getElementById('addBookForm');
@@ -20,6 +8,36 @@ const booksGrid = document.getElementById('booksGrid');
 const loadingMessage = document.getElementById('loadingMessage');
 const submitBtn = document.getElementById('submitBtn');
 const uploadProgress = document.getElementById('uploadProgress');
+const bookImageInput = document.getElementById('bookImage');
+const fileNameSpan = document.getElementById('fileName');
+
+// Show selected file name
+bookImageInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+        fileNameSpan.textContent = `Selected: ${e.target.files[0].name}`;
+    } else {
+        fileNameSpan.textContent = '';
+    }
+});
+
+// Upload image to ImgBB
+async function uploadImage(file) {
+    const formData = new FormData();
+    formData.append('image', file);
+    
+    const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+        method: 'POST',
+        body: formData
+    });
+    
+    const data = await response.json();
+    
+    if (!data.success) {
+        throw new Error('Image upload failed');
+    }
+    
+    return data.data.url;
+}
 
 // Add Book Function
 addBookForm.addEventListener('submit', async (e) => {
@@ -28,51 +46,51 @@ addBookForm.addEventListener('submit', async (e) => {
     const title = document.getElementById('bookTitle').value.trim();
     const author = document.getElementById('bookAuthor').value.trim();
     const owner = document.getElementById('ownerName').value.trim();
-    const imageFile = document.getElementById('bookImage').files[0];
+    const imageFile = bookImageInput.files[0];
     
     if (!title || !author || !owner || !imageFile) {
         alert('Please fill all fields and select an image!');
         return;
     }
     
-    // Disable submit button
+    // Validate image size (max 5MB)
+    if (imageFile.size > 5 * 1024 * 1024) {
+        alert('Image size must be less than 5MB!');
+        return;
+    }
+    
     submitBtn.disabled = true;
     submitBtn.textContent = 'Uploading...';
     uploadProgress.style.display = 'block';
     
     try {
-        // Upload image to Firebase Storage
-        const timestamp = Date.now();
-        const imageName = `${timestamp}_${imageFile.name}`;
-        const storageRef = storage.ref('book-images/' + imageName);
-        const uploadTask = storageRef.put(imageFile);
+        // Upload image
+        const imageUrl = await uploadImage(imageFile);
         
-        // Monitor upload progress
-        uploadTask.on('state_changed', 
-            (snapshot) => {
-                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                document.querySelector('.progress-fill').style.width = progress + '%';
-            }
-        );
-        
-        // Wait for upload to complete
-        await uploadTask;
-        const imageUrl = await storageRef.getDownloadURL();
-        
-        // Add book to Firestore
-        await db.collection('books').add({
-            title: title,
-            author: author,
-            owner: owner,
-            imageUrl: imageUrl,
-            isRented: false,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        // Add book to Google Sheets
+        const response = await fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                action: 'add',
+                title: title,
+                author: author,
+                owner: owner,
+                image_url: imageUrl
+            })
         });
         
-        alert('Book added successfully!');
+        alert('Book added successfully! 📚\n\nRefresh the page to see it.');
         addBookForm.reset();
-        uploadProgress.style.display = 'none';
-        document.querySelector('.progress-fill').style.width = '0%';
+        fileNameSpan.textContent = '';
+        
+        // Reload books after 2 seconds
+        setTimeout(() => {
+            loadBooks();
+        }, 2000);
         
     } catch (error) {
         console.error('Error adding book:', error);
@@ -80,15 +98,31 @@ addBookForm.addEventListener('submit', async (e) => {
     } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Add Book';
+        uploadProgress.style.display = 'none';
     }
 });
 
 // Toggle Book Rental Status
-async function toggleRentalStatus(bookId, currentStatus) {
+async function toggleRentalStatus(timestamp, currentStatus) {
     try {
-        await db.collection('books').doc(bookId).update({
-            isRented: !currentStatus
+        await fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                action: 'update',
+                timestamp: timestamp,
+                is_rented: !currentStatus
+            })
         });
+        
+        // Reload books
+        setTimeout(() => {
+            loadBooks();
+        }, 1000);
+        
     } catch (error) {
         console.error('Error updating status:', error);
         alert('Error updating book status!');
@@ -98,7 +132,7 @@ async function toggleRentalStatus(bookId, currentStatus) {
 // Display Books
 function displayBooks(books) {
     if (books.length === 0) {
-        loadingMessage.textContent = 'No books yet. Add the first one!';
+        loadingMessage.textContent = 'No books yet. Add the first one! 📖';
         booksGrid.innerHTML = '';
         return;
     }
@@ -106,37 +140,48 @@ function displayBooks(books) {
     loadingMessage.style.display = 'none';
     
     booksGrid.innerHTML = books.map(book => `
-        <div class="book-card ${book.isRented ? 'rented' : ''}">
-            <img src="${book.imageUrl}" alt="${book.title}" class="book-image">
+        <div class="book-card ${book.is_rented ? 'rented' : ''}">
+            <img src="${book.image_url}" 
+                 alt="${escapeHtml(book.title)}" 
+                 class="book-image"
+                 onerror="this.src='https://via.placeholder.com/280x350/667eea/ffffff?text=No+Image'">
             <div class="book-info">
-                <div class="book-title">${book.title}</div>
-                <div class="book-author">by ${book.author}</div>
-                <div class="book-owner">Owner: ${book.owner}</div>
-                <span class="status-badge ${book.isRented ? 'rented' : 'available'}">
-                    ${book.isRented ? '📖 Currently Rented' : '✅ Available'}
+                <div class="book-title">${escapeHtml(book.title)}</div>
+                <div class="book-author">by ${escapeHtml(book.author)}</div>
+                <div class="book-owner">Owner: ${escapeHtml(book.owner)}</div>
+                <span class="status-badge ${book.is_rented ? 'rented' : 'available'}">
+                    ${book.is_rented ? '📖 Currently Rented' : '✅ Available'}
                 </span>
-                <button class="toggle-status-btn ${book.isRented ? 'rented' : 'available'}" 
-                        onclick="toggleRentalStatus('${book.id}', ${book.isRented})">
-                    ${book.isRented ? 'Mark as Available' : 'Mark as Rented'}
+                <button class="toggle-status-btn ${book.is_rented ? 'rented' : 'available'}" 
+                        onclick="toggleRentalStatus('${book.timestamp}', ${book.is_rented})">
+                    ${book.is_rented ? 'Mark as Available' : 'Mark as Rented'}
                 </button>
             </div>
         </div>
     `).join('');
 }
 
-// Real-time Listener for Books
-db.collection('books')
-    .orderBy('createdAt', 'desc')
-    .onSnapshot((snapshot) => {
-        const books = [];
-        snapshot.forEach((doc) => {
-            books.push({
-                id: doc.id,
-                ...doc.data()
-            });
-        });
+// Escape HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Load Books from Google Sheets
+async function loadBooks() {
+    try {
+        const response = await fetch(GOOGLE_SCRIPT_URL);
+        const books = await response.json();
         displayBooks(books);
-    }, (error) => {
-        console.error('Error fetching books:', error);
-        loadingMessage.textContent = 'Error loading books. Please refresh the page.';
-    });
+    } catch (error) {
+        console.error('Error loading books:', error);
+        loadingMessage.textContent = 'Error loading books. Please refresh.';
+    }
+}
+
+// Auto-refresh every 10 seconds to show updates
+setInterval(loadBooks, 10000);
+
+// Initial load
+loadBooks();
