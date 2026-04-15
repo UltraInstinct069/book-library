@@ -1,5 +1,5 @@
 // Configuration - REPLACE WITH YOUR VALUES
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxDPNEB8WNglWKltigsroKaYlnSxAVqAHRf_3IIbkkNqReDBtd0RmB0ouRG7KOfKgrv6w/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx_WGCnf-Aw0_TMCnmtkjw-P2Ce-XSAX72ATuiEIrGLw54hwRWl7CMQHPojPmpZM1ZbeQ/exec';
 const IMGBB_API_KEY = 'd42e94b83657f90f9f6694f95e50b4e8'; // Get free at https://api.imgbb.com
 
 // DOM Elements
