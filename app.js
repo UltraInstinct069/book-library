@@ -103,11 +103,11 @@ addBookForm.addEventListener('submit', async (e) => {
     uploadProgress.style.display = 'block';
     
     try {
-        // Step 1: Compress and upload image
+        // Step 1: Compress and upload image (if provided)
         document.querySelector('.progress-text').textContent = 'Compressing...';
         document.querySelector('.progress-fill').style.width = '30%';
         
-        const imageUrl = await uploadImage(imageFile);
+        const imageUrl = imageFile ? await uploadImage(imageFile) : '';
         
         // Step 2: Save to Google Sheets
         document.querySelector('.progress-text').textContent = 'Saving...';
