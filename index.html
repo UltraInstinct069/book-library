@@ -4,7 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pullman Islamic association Book Library</title>
+    <meta name="description" content="Share and borrow books with your community">
     <link rel="stylesheet" href="styles.css">
+    
+    <!-- Preconnect to external resources for faster loading -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
 </head>
 <body>
     <div class="container">
@@ -18,31 +22,63 @@
             <h2>Add a New Book</h2>
             <form id="addBookForm">
                 <input type="text" id="bookTitle" placeholder="Book Title *" required>
-                <input type="text" id="bookAuthor" placeholder="Author" >
-                <input type="text" id="ownerName" placeholder="Your Name" >
+                <input type="text" id="bookAuthor" placeholder="Author">
+                <input type="text" id="ownerName" placeholder="Your Name">
+                
                 <div class="file-input-wrapper">
-                    <input type="file" id="bookImage" accept="image/*" >
+                    <input type="file" id="bookImage" accept="image/*">
                     <label for="bookImage" class="file-label">
                         📷 Choose Book Cover Image
                     </label>
                     <span id="fileName" class="file-name"></span>
                 </div>
-                <button type="submit" id="submitBtn">Add Book</button>
+                
+                <div class="image-info">
+                    💡 Images will be automatically optimized for faster loading
+                </div>
+                
+                <button type="submit" id="submitBtn">
+                    <span class="btn-text">Add Book</span>
+                </button>
             </form>
+            
             <div id="uploadProgress" class="progress-bar" style="display: none;">
                 <div class="progress-fill"></div>
-                <span class="progress-text">Uploading...</span>
+                <span class="progress-text">0%</span>
             </div>
         </section>
 
         <!-- Books Display -->
         <section class="books-section">
-            <h2>Available Books</h2>
-            <div id="loadingMessage">Loading books...</div>
+            <div class="section-header">
+                <h2>Available Books</h2>
+                <button id="refreshBtn" class="refresh-btn" title="Refresh books">
+                    🔄 Refresh
+                </button>
+            </div>
+            
+            <div id="loadingMessage" class="loading-message">
+                <div class="loading-spinner"></div>
+                <div>Loading your library...</div>
+            </div>
+            
             <div id="booksGrid" class="books-grid"></div>
+            
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <div class="empty-icon">📚</div>
+                <h3>No books yet!</h3>
+                <p>Be the first to add a book to the community library</p>
+            </div>
         </section>
     </div>
 
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Image Compression Library -->
+    <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+    
+    <!-- Your App Script -->
     <script src="app.js"></script>
 </body>
 </html>
