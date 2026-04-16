@@ -125,9 +125,6 @@ addBookForm.addEventListener('submit', async (e) => {
         const response = await fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
             mode: 'no-cors',
-            headers: {
-                'Content-Type': 'application/json',
-            },
             body: JSON.stringify({
                 action: 'add',
                 title: title,
@@ -172,9 +169,6 @@ async function deleteBook(title) {
         await fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
             mode: 'no-cors',
-            headers: {
-                'Content-Type': 'application/json',
-            },
             body: JSON.stringify({
                 action: 'delete',
                 title: title
@@ -198,9 +192,6 @@ async function toggleRentalStatus(title, currentStatus) {
         await fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
             mode: 'no-cors',
-            headers: {
-                'Content-Type': 'application/json',
-            },
             body: JSON.stringify({
                 action: 'update',
                 title: title,
