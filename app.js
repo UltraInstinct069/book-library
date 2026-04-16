@@ -1,29 +1,67 @@
-// Configuration - REPLACE WITH YOUR VALUES
+// ============================================
+// GOOGLE SHEETS CONFIGURATION
+// ============================================
+// REPLACE WITH YOUR VALUES
 const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyE8jRhs0F1txQ3Wc6iuqhKyBg_0GgQ6lIWwn_dJve4aM4Igdnd3i9kSS46YIitvvDz7g/exec';
 const IMGBB_API_KEY = 'd42e94b83657f90f9f6694f95e50b4e8'; // Get free at https://api.imgbb.com
 
-// DOM Elements
+// ============================================
+// DOM ELEMENTS
+// ============================================
 const addBookForm = document.getElementById('addBookForm');
 const booksGrid = document.getElementById('booksGrid');
 const loadingMessage = document.getElementById('loadingMessage');
+const emptyState = document.getElementById('emptyState');
 const submitBtn = document.getElementById('submitBtn');
 const uploadProgress = document.getElementById('uploadProgress');
 const bookImageInput = document.getElementById('bookImage');
 const fileNameSpan = document.getElementById('fileName');
+const refreshBtn = document.getElementById('refreshBtn');
 
-// Show selected file name
+// ============================================
+// CACHE CONFIGURATION
+// ============================================
+let booksCache = null;
+let lastFetchTime = 0;
+const CACHE_DURATION = 30000; // 30 seconds
+
+// ============================================
+// IMAGE COMPRESSION SETTINGS
+// ============================================
+const IMAGE_COMPRESSION_OPTIONS = {
+    maxSizeMB: 0.5,
+    maxWidthOrHeight: 800,
+    useWebWorker: true,
+    fileType: 'image/jpeg'
+};
+
+// ============================================
+// FILE INPUT HANDLER
+// ============================================
 bookImageInput.addEventListener('change', (e) => {
     if (e.target.files.length > 0) {
-        fileNameSpan.textContent = `Selected: ${e.target.files[0].name}`;
+        const file = e.target.files[0];
+        const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+        fileNameSpan.textContent = `Selected: ${file.name} (${sizeMB} MB)`;
     } else {
         fileNameSpan.textContent = '';
     }
 });
 
-// Upload image to ImgBB
+// ============================================
+// UPLOAD IMAGE TO IMGBB
+// ============================================
 async function uploadImage(file) {
+    // Compress first
+    console.log(`Original: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
+    
+    const compressedFile = await imageCompression(file, IMAGE_COMPRESSION_OPTIONS);
+    
+    console.log(`Compressed: ${(compressedFile.size / 1024 / 1024).toFixed(2)} MB`);
+    
+    // Upload to ImgBB
     const formData = new FormData();
-    formData.append('image', file);
+    formData.append('image', compressedFile);
     
     const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
         method: 'POST',
@@ -39,7 +77,9 @@ async function uploadImage(file) {
     return data.data.url;
 }
 
-// Add Book Function
+// ============================================
+// ADD BOOK FUNCTION
+// ============================================
 addBookForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     
@@ -53,24 +93,28 @@ addBookForm.addEventListener('submit', async (e) => {
         return;
     }
     
-    // Validate image size (max 5MB)
-    if (imageFile.size > 5 * 1024 * 1024) {
-        alert('Image size must be less than 5MB!');
+    if (imageFile && !imageFile.type.startsWith('image/')) {
+        alert('Please select a valid image file!');
         return;
     }
     
     submitBtn.disabled = true;
-    submitBtn.textContent = 'Uploading...';
+    submitBtn.innerHTML = '<span class="btn-text">Processing...</span>';
     uploadProgress.style.display = 'block';
     
     try {
-        // Upload image
+        // Step 1: Compress and upload image
+        document.querySelector('.progress-text').textContent = 'Compressing...';
+        document.querySelector('.progress-fill').style.width = '30%';
+        
         const imageUrl = await uploadImage(imageFile);
         
-        // Add book to Google Sheets
+        // Step 2: Save to Google Sheets
+        document.querySelector('.progress-text').textContent = 'Saving...';
+        document.querySelector('.progress-fill').style.width = '70%';
+        
         const response = await fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
-            mode: 'no-cors',
             headers: {
                 'Content-Type': 'application/json',
             },
@@ -83,33 +127,40 @@ addBookForm.addEventListener('submit', async (e) => {
             })
         });
         
-        alert('Book added successfully! 📚\n\nRefresh the page to see it.');
+        document.querySelector('.progress-fill').style.width = '100%';
+        document.querySelector('.progress-text').textContent = 'Complete!';
+        
+        // Success
+        alert('Book added successfully! 📚');
         addBookForm.reset();
         fileNameSpan.textContent = '';
         
-        // Reload books after 2 seconds
         setTimeout(() => {
-            loadBooks();
-        }, 2000);
+            uploadProgress.style.display = 'none';
+            document.querySelector('.progress-fill').style.width = '0%';
+        }, 1500);
+        
+        // Reload books
+        setTimeout(() => loadBooks(true), 2000);
         
     } catch (error) {
         console.error('Error adding book:', error);
         alert('Error adding book: ' + error.message);
     } finally {
         submitBtn.disabled = false;
-        submitBtn.textContent = 'Add Book';
-        uploadProgress.style.display = 'none';
+        submitBtn.innerHTML = '<span class="btn-text">Add Book</span>';
     }
 });
 
-// Delete Book
+// ============================================
+// DELETE BOOK
+// ============================================
 async function deleteBook(title) {
     if (!confirm('Are you sure you want to delete this book?')) return;
 
     try {
         await fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
-            mode: 'no-cors',
             headers: {
                 'Content-Type': 'application/json',
             },
@@ -120,9 +171,7 @@ async function deleteBook(title) {
         });
 
         alert('Book deleted!');
-        setTimeout(() => {
-            loadBooks();
-        }, 1000);
+        setTimeout(() => loadBooks(true), 1000);
 
     } catch (error) {
         console.error('Error deleting book:', error);
@@ -130,12 +179,13 @@ async function deleteBook(title) {
     }
 }
 
-// Toggle Book Rental Status
+// ============================================
+// TOGGLE RENTAL STATUS
+// ============================================
 async function toggleRentalStatus(title, currentStatus) {
     try {
         await fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
-            mode: 'no-cors',
             headers: {
                 'Content-Type': 'application/json',
             },
@@ -146,10 +196,8 @@ async function toggleRentalStatus(title, currentStatus) {
             })
         });
         
-        // Reload books
-        setTimeout(() => {
-            loadBooks();
-        }, 1000);
+        // Reload books after short delay
+        setTimeout(() => loadBooks(true), 1000);
         
     } catch (error) {
         console.error('Error updating status:', error);
@@ -157,27 +205,32 @@ async function toggleRentalStatus(title, currentStatus) {
     }
 }
 
-// Display Books
+// ============================================
+// DISPLAY BOOKS
+// ============================================
 function displayBooks(books) {
+    loadingMessage.style.display = 'none';
+    
     if (books.length === 0) {
-        loadingMessage.textContent = 'No books yet. Add the first one! 📖';
         booksGrid.innerHTML = '';
+        emptyState.style.display = 'block';
         return;
     }
     
-    loadingMessage.style.display = 'none';
+    emptyState.style.display = 'none';
     
-    booksGrid.innerHTML = books.map(book => `
-        <div class="book-card ${book.is_rented ? 'rented' : ''}">
+    booksGrid.innerHTML = books.map((book, index) => `
+        <div class="book-card ${book.is_rented ? 'rented' : ''}" style="animation-delay: ${index * 0.05}s">
             <img src="${book.image_url}" 
                  alt="${escapeHtml(book.title)}" 
                  class="book-image"
-                 onerror="this.src='https://via.placeholder.com/280x350/667eea/ffffff?text=No+Image'">
+                 loading="lazy"
+                 onload="this.classList.add('loaded')"
+                 onerror="this.src='https://via.placeholder.com/280x350/667eea/ffffff?text=No+Image';this.classList.add('loaded')">
             <div class="book-info">
                 <div class="book-title">${escapeHtml(book.title)}</div>
                 <div class="book-author">by ${escapeHtml(book.author)}</div>
                 <div class="book-owner">Owner: ${escapeHtml(book.owner)}</div>
-                <a class="image-link" href="${book.image_url}" target="_blank" rel="noopener noreferrer">🔗 View Photo</a>
                 <span class="status-badge ${book.is_rented ? 'rented' : 'available'}">
                     ${book.is_rented ? '📖 Currently Rented' : '✅ Available'}
                 </span>
@@ -193,27 +246,77 @@ function displayBooks(books) {
     `).join('');
 }
 
-// Escape HTML
+// ============================================
+// LOAD BOOKS (WITH CACHING)
+// ============================================
+async function loadBooks(forceRefresh = false) {
+    try {
+        const now = Date.now();
+        
+        // Use cache if available
+        if (!forceRefresh && booksCache && (now - lastFetchTime) < CACHE_DURATION) {
+            console.log('Using cached data');
+            displayBooks(booksCache);
+            return;
+        }
+        
+        if (forceRefresh) {
+            loadingMessage.style.display = 'block';
+        }
+        
+        // Fetch from Google Sheets
+        const response = await fetch(GOOGLE_SCRIPT_URL);
+        const books = await response.json();
+        
+        // Update cache
+        booksCache = books || [];
+        lastFetchTime = now;
+        
+        displayBooks(booksCache);
+        
+    } catch (error) {
+        console.error('Error loading books:', error);
+        loadingMessage.innerHTML = `
+            <div style="color: #f44336;">
+                <div style="font-size: 3em; margin-bottom: 10px;">⚠️</div>
+                <div>Error loading books. Please refresh the page.</div>
+                <button onclick="loadBooks(true)" style="margin-top: 15px; padding: 10px 20px; border: none; background: #667eea; color: white; border-radius: 6px; cursor: pointer;">
+                    Try Again
+                </button>
+            </div>
+        `;
+    }
+}
+
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
 }
 
-// Load Books from Google Sheets
-async function loadBooks() {
-    try {
-        const response = await fetch(GOOGLE_SCRIPT_URL);
-        const books = await response.json();
-        displayBooks(books);
-    } catch (error) {
-        console.error('Error loading books:', error);
-        loadingMessage.textContent = 'Error loading books. Please refresh.';
-    }
-}
+// ============================================
+// REFRESH BUTTON
+// ============================================
+refreshBtn.addEventListener('click', () => {
+    refreshBtn.style.transform = 'rotate(360deg)';
+    setTimeout(() => {
+        refreshBtn.style.transform = '';
+    }, 600);
+    loadBooks(true);
+});
 
-// Auto-refresh every 10 seconds to show updates
-setInterval(loadBooks, 10000);
+// ============================================
+// AUTO-REFRESH (Every 30 seconds)
+// ============================================
+setInterval(() => {
+    loadBooks(true);
+}, 30000);
 
-// Initial load
-loadBooks();
+// ============================================
+// INITIALIZE
+// ============================================
+console.log('📚 Book Library App Initialized (Google Sheets)');
+loadBooks(true);
