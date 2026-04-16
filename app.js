@@ -234,6 +234,7 @@ function displayBooks(books) {
                 <div class="book-title">${escapeHtml(book.title)}</div>
                 <div class="book-author">by ${escapeHtml(book.author)}</div>
                 <div class="book-owner">Owner: ${escapeHtml(book.owner)}</div>
+                <a class="image-link" href="${book.image_url}" target="_blank" rel="noopener noreferrer">🔗 View Photo</a>
                 <span class="status-badge ${book.is_rented ? 'rented' : 'available'}">
                     ${book.is_rented ? '📖 Currently Rented' : '✅ Available'}
                 </span>
