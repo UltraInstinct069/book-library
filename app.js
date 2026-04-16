@@ -52,26 +52,35 @@ bookImageInput.addEventListener('change', (e) => {
 // UPLOAD IMAGE TO IMGBB
 // ============================================
 async function uploadImage(file) {
-    // Compress first
-    console.log(`Original: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
-    
-    const compressedFile = await imageCompression(file, IMAGE_COMPRESSION_OPTIONS);
-    
-    console.log(`Compressed: ${(compressedFile.size / 1024 / 1024).toFixed(2)} MB`);
+    // Compress first (fall back to original if compression fails)
+    let fileToUpload = file;
+    try {
+        console.log(`Original: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
+        fileToUpload = await imageCompression(file, IMAGE_COMPRESSION_OPTIONS);
+        console.log(`Compressed: ${(fileToUpload.size / 1024 / 1024).toFixed(2)} MB`);
+    } catch (compressionError) {
+        console.warn('Compression failed, using original file:', compressionError);
+        fileToUpload = file;
+    }
     
     // Upload to ImgBB
     const formData = new FormData();
-    formData.append('image', compressedFile);
+    formData.append('image', fileToUpload);
     
-    const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
-        method: 'POST',
-        body: formData
-    });
+    let response;
+    try {
+        response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+            method: 'POST',
+            body: formData
+        });
+    } catch (networkError) {
+        throw new Error('ImgBB upload failed (network error). Check your internet connection.');
+    }
     
     const data = await response.json();
     
     if (!data.success) {
-        throw new Error('Image upload failed');
+        throw new Error(`ImgBB upload failed: ${data.error?.message || 'Unknown error'}`);
     }
     
     return data.data.url;
