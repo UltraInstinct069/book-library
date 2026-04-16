@@ -1,5 +1,5 @@
 // Configuration - REPLACE WITH YOUR VALUES
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx_WGCnf-Aw0_TMCnmtkjw-P2Ce-XSAX72ATuiEIrGLw54hwRWl7CMQHPojPmpZM1ZbeQ/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyE8jRhs0F1txQ3Wc6iuqhKyBg_0GgQ6lIWwn_dJve4aM4Igdnd3i9kSS46YIitvvDz7g/exec';
 const IMGBB_API_KEY = 'd42e94b83657f90f9f6694f95e50b4e8'; // Get free at https://api.imgbb.com
 
 // DOM Elements
@@ -103,7 +103,7 @@ addBookForm.addEventListener('submit', async (e) => {
 });
 
 // Delete Book
-async function deleteBook(image_url) {
+async function deleteBook(title) {
     if (!confirm('Are you sure you want to delete this book?')) return;
 
     try {
@@ -115,7 +115,7 @@ async function deleteBook(image_url) {
             },
             body: JSON.stringify({
                 action: 'delete',
-                image_url: image_url
+                title: title
             })
         });
 
@@ -131,7 +131,7 @@ async function deleteBook(image_url) {
 }
 
 // Toggle Book Rental Status
-async function toggleRentalStatus(image_url, currentStatus) {
+async function toggleRentalStatus(title, currentStatus) {
     try {
         await fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
@@ -141,7 +141,7 @@ async function toggleRentalStatus(image_url, currentStatus) {
             },
             body: JSON.stringify({
                 action: 'update',
-                image_url: image_url,
+                title: title,
                 is_rented: !currentStatus
             })
         });
@@ -182,10 +182,10 @@ function displayBooks(books) {
                     ${book.is_rented ? '📖 Currently Rented' : '✅ Available'}
                 </span>
                 <button class="toggle-status-btn ${book.is_rented ? 'rented' : 'available'}" 
-                        onclick="toggleRentalStatus('${book.image_url}', ${book.is_rented})">
+                        onclick="toggleRentalStatus('${escapeHtml(book.title)}', ${book.is_rented})">
                     ${book.is_rented ? 'Mark as Available' : 'Mark as Rented'}
                 </button>
-                <button class="delete-btn" onclick="deleteBook('${book.image_url}')">
+                <button class="delete-btn" onclick="deleteBook('${escapeHtml(book.title)}')">
                     🗑️ Delete Book
                 </button>
             </div>
