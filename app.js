@@ -48,8 +48,8 @@ addBookForm.addEventListener('submit', async (e) => {
     const owner = document.getElementById('ownerName').value.trim();
     const imageFile = bookImageInput.files[0];
     
-    if (!title || !author || !owner || !imageFile) {
-        alert('Please fill all fields and select an image!');
+    if (!title) {
+        alert('Please enter a book title!');
         return;
     }
     
